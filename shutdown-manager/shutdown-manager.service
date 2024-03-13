@@ -1,0 +1,10 @@
+[Unit]
+Description=Triggers shutdown on button press and manages the power LED
+
+[Service]
+ExecStart=/usr/local/sbin/shutdown-manager
+# We want the child to survive as it should let the LED blink until poweroff:
+KillMode=process
+
+[Install]
+WantedBy=multi-user.target

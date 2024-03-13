@@ -1,0 +1,43 @@
+#!/usr/bin/env python3
+import gpiozero
+import os
+import time
+import subprocess
+import signal
+
+GPIO_LED = 13
+GPIO_POWER_BUTTON = 17
+POWER_BUTTON_HOLD_TIME = 0.9
+
+
+def shutdown():
+    # Indicate that we are doing something:
+    led.off()
+    # Perform all actions in a child process so that we can stay alive
+    # as long as possible
+    pid = os.fork()
+    if pid:
+        print(f"Forked first shutdown child {pid}")
+        return os._exit(0)
+    # child
+    pid = os.fork()
+    if pid:
+        print(f"Forked second shutdown child {pid}")
+        return os._exit(0)
+    # second child:
+    os.setsid()
+    subprocess.check_call(['sudo', 'poweroff'])
+    while True:
+        led.off()
+        time.sleep(0.5)
+        led.on()
+        time.sleep(0.3)
+        # run until we are killed by systemd
+
+
+if __name__ == '__main__':
+    led = gpiozero.LED(GPIO_LED)
+    led.on()
+    shutdown_btn = gpiozero.Button(GPIO_POWER_BUTTON, hold_time=POWER_BUTTON_HOLD_TIME)
+    shutdown_btn.when_held = shutdown
+    signal.pause()

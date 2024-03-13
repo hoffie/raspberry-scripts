@@ -1,0 +1,9 @@
+[Unit]
+Description=Monitors wpa_supplicant for connection problems with status=16 and forces key_mgmt=WPA-PSK
+Before=wpa_supplicant.service
+
+[Service]
+ExecStart=/usr/local/sbin/wpa_supplicant-retry-status-16
+
+[Install]
+WantedBy=multi-user.target

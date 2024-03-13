@@ -1,0 +1,40 @@
+#!/usr/bin/env python3
+import re
+import logging
+import subprocess
+import time
+from systemd import journal
+SYSTEMD_UNIT = 'wpa_supplicant.service'
+PATTERN = r"(wlan\d+): CTRL-EVENT-ASSOC-REJECT .* status_code=16"
+PATTERN_RE = re.compile(PATTERN)
+
+logger = logging.getLogger('')
+
+def main():
+    logging.basicConfig(level=logging.INFO)
+    j = journal.Reader()
+    j.seek_tail()
+    j.get_previous()
+    j.add_match(_SYSTEMD_UNIT=SYSTEMD_UNIT)
+    current_ssid = None
+    while True:
+        event = j.wait(timeout=None)
+        for event in j:
+            m = PATTERN_RE.match(event['MESSAGE'])
+            if not m:
+                continue
+            enforce_wpa_psk_without_sha256(m.group(1))
+
+def enforce_wpa_psk_without_sha256(iface):
+    logger.info(f"Overriding {iface} key_mgmt to WPA-PSK...")
+    for attempt in range(30):
+        try:
+            subprocess.check_output(['wpa_cli', 'set_network', iface, 'key_mgmt', "WPA-PSK"])
+            subprocess.check_output(['wpa_cli', 'reconnect'])
+            logger.info("Success")
+        except Exception as exc:
+            logger.error("Exception", exc_info=exc)
+        time.sleep(0.5)
+
+if __name__ == '__main__':
+    main()
